@@ -10,13 +10,13 @@ public class MainApp extends Application {
     private Scene mainScene;
 
     // Figma-based size
-    private static final int WIDTH = 1280;
+    private static final int WIDTH = 1080;
     private static final int HEIGHT = 720;
 
     @Override
     public void start(Stage stage) {
         this.primaryStage = stage;
-        primaryStage.setTitle("Inventory Management System");
+        primaryStage.setTitle("Prestige Inventory Suite");
 
         // Initialize empty scene once
         mainScene = new Scene(new javafx.scene.layout.StackPane(), WIDTH, HEIGHT);

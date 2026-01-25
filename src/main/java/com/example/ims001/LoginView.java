@@ -3,68 +3,107 @@ package com.example.ims001;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 public class LoginView {
 
     private MainApp mainApp;
-    private VBox root;
-    private TextField txtUsername, txtPasswordText;
+    private StackPane root;
+
+    private TextField txtUsername;
     private PasswordField txtPassword;
+    private TextField txtPasswordText;
     private Label lblMessage;
     private CheckBox showPassword;
 
     public LoginView(MainApp mainApp) {
         this.mainApp = mainApp;
-        createView();
-    }
 
-    private void createView() {
-        // Root container
-        root = new VBox(20); // spacing between elements
-        root.setAlignment(Pos.CENTER);
+        root = new StackPane();
         root.getStyleClass().add("login-root");
 
-        // Title
+        // ===== Background GIF =====
+        Image bgGif = new Image(getClass().getResource("/images/bgleftcard.jpg").toExternalForm());
+        ImageView bgView = new ImageView(bgGif);
+        bgView.setFitWidth(1920);
+        bgView.setFitHeight(1080);
+        bgView.setPreserveRatio(false);
+        bgView.setOpacity(1);
+
+        // ===== Main HBox with left and right cards =====
+        HBox mainBox = new HBox();
+        mainBox.setAlignment(Pos.CENTER);
+        mainBox.setSpacing(0); // no gap between cards
+
+        VBox leftCard = createLeftCard();
+        VBox rightCard = createLoginCard();
+
+        mainBox.getChildren().addAll(leftCard, rightCard);
+
+        root.getChildren().addAll(bgView, mainBox);
+    }
+
+    private VBox createLeftCard() {
+        VBox leftCard = new VBox();
+        leftCard.setPrefWidth(400);
+        leftCard.setAlignment(Pos.CENTER);
+        leftCard.getStyleClass().add("left-card");
+
+        Image img = new Image(getClass().getResource("/images/bgleftcard_3.jpg").toExternalForm());
+        ImageView imgView = new ImageView(img);
+        imgView.setFitWidth(300);
+        imgView.setPreserveRatio(true);
+        imgView.setOpacity(0);
+        imgView.setSmooth(true);
+        imgView.setCache(true);
+
+        leftCard.getChildren().add(imgView);
+        return leftCard;
+    }
+
+    private VBox createLoginCard() {
+        VBox rightCard = new VBox(12);
+        rightCard.setPrefWidth(700);
+        rightCard.setAlignment(Pos.CENTER_LEFT);
+        rightCard.getStyleClass().add("right-card");
+
         Label title = new Label("Login form");
         title.getStyleClass().add("title");
 
-        // Title_quote
-        Label title_quote = new Label ("“Know what you have, sell with confidence, and never run out unexpectedly.”");
-        title_quote.getStyleClass().add("title_2");
+        Label quote = new Label("“Know what you have, sell with confidence, and never run out unexpectedly.”");
+        quote.getStyleClass().add("title_2");
+        quote.setWrapText(true);
 
-        // user
-        Label input_user = new Label ("Username");
-        title_quote.getStyleClass().add("input-field-user");
+        Label user = new Label("Username");
+        user.getStyleClass().add("title_3");
 
-        // Username field
         txtUsername = new TextField();
         txtUsername.setPromptText("Enter your Username");
-        txtUsername.setMaxWidth(719); // matches CSS
+        txtUsername.setMaxWidth(480);
         txtUsername.getStyleClass().add("input-field");
 
-        // pass
-        Label input_pass = new Label ("Password");
-        title_quote.getStyleClass().add("input-field-password");
+        Label pass = new Label("Password");
+        pass.getStyleClass().add("title_3");
 
-        // Password fields
         txtPassword = new PasswordField();
         txtPassword.setPromptText("Enter your Password");
-        txtPassword.setMaxWidth(719);
+        txtPassword.setMaxWidth(480);
         txtPassword.getStyleClass().add("input-field");
 
         txtPasswordText = new TextField();
-        txtPasswordText.setManaged(false);
-        txtPasswordText.setVisible(false);
-        txtPasswordText.setMaxWidth(719);
+        txtPasswordText.setPromptText("Enter your Password");
+        txtPasswordText.setMaxWidth(480);
         txtPasswordText.getStyleClass().add("input-field");
+        txtPasswordText.setVisible(false);
+        txtPasswordText.setManaged(false);
 
-        // Bind password fields
         txtPassword.textProperty().bindBidirectional(txtPasswordText.textProperty());
 
-        // Show password checkbox
         showPassword = new CheckBox("Show Password");
-        showPassword.getStyleClass().add("checkbox");
         showPassword.setOnAction(e -> {
             boolean show = showPassword.isSelected();
             txtPassword.setVisible(!show);
@@ -73,14 +112,14 @@ public class LoginView {
             txtPasswordText.setManaged(show);
         });
 
-        // Message label
-        lblMessage = new Label();
-        lblMessage.getStyleClass().add("message-label");
-
-        // Buttons
         Button btnForgot = new Button("Forgot Password?");
         btnForgot.getStyleClass().add("link-button");
         btnForgot.setOnAction(e -> mainApp.showForgotPasswordView());
+
+        // Show password + forgot password on same row
+        HBox passwordRow = new HBox(10);
+        passwordRow.setAlignment(Pos.CENTER_LEFT);
+        passwordRow.getChildren().addAll(showPassword, btnForgot);
 
         Button btnLogin = new Button("Get Started");
         btnLogin.getStyleClass().add("primary-button");
@@ -90,18 +129,24 @@ public class LoginView {
         btnRegister.getStyleClass().add("secondary-button");
         btnRegister.setOnAction(e -> mainApp.showRegisterView());
 
-        // Assemble layout
-        root.getChildren().addAll(
-                title_quote,
+        lblMessage = new Label();
+        lblMessage.getStyleClass().add("message-label");
+
+        rightCard.getChildren().addAll(
+                title,
+                quote,
+                user,
                 txtUsername,
+                pass,
                 txtPassword,
                 txtPasswordText,
-                showPassword,
+                passwordRow,
                 btnLogin,
                 btnRegister,
-                btnForgot,
                 lblMessage
         );
+
+        return rightCard;
     }
 
     private void handleLogin() {
