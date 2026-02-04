@@ -83,13 +83,13 @@ public class ProductDAO {
         }
     }
 
-    // ✅ Dashboard summary counts (Total / In / Low / Out)
+    //  Dashboard summary counts (Total / In / Low / Out)
     public static StockSummary getStockSummary() {
         String sql = """
                 SELECT
                   COUNT(*) AS total,
-                  SUM(CASE WHEN quantity > 5 THEN 1 ELSE 0 END) AS in_stock,
-                  SUM(CASE WHEN quantity BETWEEN 1 AND 5 THEN 1 ELSE 0 END) AS low_stock,
+                  SUM(CASE WHEN quantity > 10 THEN 1 ELSE 0 END) AS in_stock,
+                  SUM(CASE WHEN quantity BETWEEN 1 AND 10 THEN 1 ELSE 0 END) AS low_stock,
                   SUM(CASE WHEN quantity = 0 THEN 1 ELSE 0 END) AS out_stock
                 FROM products
                 """;

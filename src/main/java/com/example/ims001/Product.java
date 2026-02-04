@@ -26,10 +26,9 @@ public class Product {
     public void setQuantity(int quantity) { this.quantity = quantity; }
     public void setPrice(double price) { this.price = price; }
 
-    // ✅ AUTO STOCK STATUS (editable threshold)
     public String getStatus() {
         if (quantity == 0) return "OUT OF STOCK";
-        if (quantity <= 5) return "LOW STOCK";
+        if (quantity <= 10) return "LOW STOCK";
         return "IN STOCK";
     }
 }

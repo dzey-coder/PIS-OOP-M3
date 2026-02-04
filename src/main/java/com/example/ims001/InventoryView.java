@@ -8,9 +8,14 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 
+import java.io.File;
+import java.nio.file.*;
 import java.util.Comparator;
+import java.util.UUID;
 
 public class InventoryView {
 
@@ -20,7 +25,6 @@ public class InventoryView {
     private final TableView<Product> table = new TableView<>();
     private final ObservableList<Product> masterData = FXCollections.observableArrayList();
 
-    // ✅ For search + sorting
     private FilteredList<Product> filtered;
     private SortedList<Product> sorted;
 
@@ -32,13 +36,11 @@ public class InventoryView {
     private final Label status = new Label();
     private final Label stockWarning = new Label();
 
-    // ✅ Search
     private final TextField tfSearch = new TextField();
-
-    // ✅ Sort toggle
     private boolean lowStockFirstEnabled = false;
-
     private boolean warnedOnce = false;
+
+    private String selectedImagePath = null;
 
     public InventoryView(MainApp mainApp) {
         this.mainApp = mainApp;
@@ -48,6 +50,9 @@ public class InventoryView {
     }
 
     private void buildUI() {
+        // Root background (modern light)
+        root.setStyle("-fx-background-color: #F5F7FB;");
+
         // Top bar
         Button btnBack = new Button("Back to Dashboard");
         btnBack.setOnAction(e -> mainApp.showDashboardView(Session.getUsername()));
@@ -55,11 +60,9 @@ public class InventoryView {
         Button btnRefresh = new Button("Refresh");
         btnRefresh.setOnAction(e -> refresh());
 
-        // ✅ Search box
         tfSearch.setPromptText("Search (name / category / status)...");
-        tfSearch.setPrefWidth(320);
+        tfSearch.setPrefWidth(380);
 
-        // ✅ Sort button
         Button btnLowStockFirst = new Button("Low Stock First: OFF");
         btnLowStockFirst.setOnAction(e -> {
             lowStockFirstEnabled = !lowStockFirstEnabled;
@@ -67,33 +70,117 @@ public class InventoryView {
             applySort();
         });
 
-        HBox top = new HBox(10, btnBack, btnRefresh, tfSearch, btnLowStockFirst, stockWarning);
-        top.setPadding(new Insets(10));
-        top.setAlignment(Pos.CENTER_LEFT);
+        // Stock warning label style baseline
+        stockWarning.setStyle("-fx-font-weight: bold; -fx-padding: 0 0 0 8;");
 
-        // Table columns
+        HBox topBar = new HBox(10, btnBack, btnRefresh, tfSearch, btnLowStockFirst, stockWarning);
+        topBar.setAlignment(Pos.CENTER_LEFT);
+
+        // Put top bar in a "card"
+        HBox topCard = new HBox(topBar);
+        topCard.setPadding(new Insets(12));
+        topCard.setStyle("""
+                -fx-background-color: white;
+                -fx-background-radius: 14;
+                -fx-border-radius: 14;
+                -fx-border-color: #E6EAF2;
+                -fx-border-width: 1;
+                """);
+
+        VBox topWrap = new VBox(12, topCard);
+        topWrap.setPadding(new Insets(14, 14, 10, 14));
+
+        // Table modern look
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setStyle("""
+                -fx-background-color: white;
+                -fx-background-radius: 14;
+                -fx-border-radius: 14;
+                -fx-border-color: #E6EAF2;
+                -fx-border-width: 1;
+                """);
+
+        // Bigger rows so bigger images look good
+        table.setFixedCellSize(74); // row height
+
+        // Columns
         TableColumn<Product, Integer> colId = new TableColumn<>("ID");
-        colId.setCellValueFactory(c -> new javafx.beans.property.SimpleIntegerProperty(c.getValue().getId()).asObject());
+        colId.setMaxWidth(1f * Integer.MAX_VALUE);
+        colId.setCellValueFactory(c ->
+                new javafx.beans.property.SimpleIntegerProperty(c.getValue().getId()).asObject()
+        );
+
+        // ✅ Image column BETWEEN ID and Name, bigger image
+        TableColumn<Product, Integer> colImg = new TableColumn<>("Image");
+        colImg.setMaxWidth(1f * Integer.MAX_VALUE);
+        colImg.setCellValueFactory(c ->
+                new javafx.beans.property.SimpleIntegerProperty(c.getValue().getId()).asObject()
+        );
+
+        colImg.setCellFactory(col -> new TableCell<>() {
+            private final ImageView iv = new ImageView();
+
+            {
+                iv.setFitWidth(64);
+                iv.setFitHeight(64);
+                iv.setPreserveRatio(true);
+                iv.setSmooth(true);
+            }
+
+            @Override
+            protected void updateItem(Integer productId, boolean empty) {
+                super.updateItem(productId, empty);
+
+                if (empty || productId == null) {
+                    setGraphic(null);
+                    return;
+                }
+
+                String path = ProductImageDAO.getImagePath(productId);
+                if (path == null || path.isBlank()) {
+                    setGraphic(null);
+                    return;
+                }
+
+                try {
+                    iv.setImage(new javafx.scene.image.Image("file:" + path, true));
+                    setGraphic(iv);
+                } catch (Exception e) {
+                    setGraphic(null);
+                }
+            }
+        });
 
         TableColumn<Product, String> colName = new TableColumn<>("Name");
-        colName.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().getName()));
+        colName.setMaxWidth(1f * Integer.MAX_VALUE);
+        colName.setCellValueFactory(c ->
+                new javafx.beans.property.SimpleStringProperty(c.getValue().getName())
+        );
 
         TableColumn<Product, String> colCat = new TableColumn<>("Category");
-        colCat.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().getCategory()));
+        colCat.setMaxWidth(1f * Integer.MAX_VALUE);
+        colCat.setCellValueFactory(c ->
+                new javafx.beans.property.SimpleStringProperty(c.getValue().getCategory())
+        );
 
         TableColumn<Product, Integer> colQty = new TableColumn<>("Qty");
-        colQty.setCellValueFactory(c -> new javafx.beans.property.SimpleIntegerProperty(c.getValue().getQuantity()).asObject());
+        colQty.setMaxWidth(1f * Integer.MAX_VALUE);
+        colQty.setCellValueFactory(c ->
+                new javafx.beans.property.SimpleIntegerProperty(c.getValue().getQuantity()).asObject()
+        );
 
         TableColumn<Product, Double> colPrice = new TableColumn<>("Price");
-        colPrice.setCellValueFactory(c -> new javafx.beans.property.SimpleDoubleProperty(c.getValue().getPrice()).asObject());
+        colPrice.setMaxWidth(1f * Integer.MAX_VALUE);
+        colPrice.setCellValueFactory(c ->
+                new javafx.beans.property.SimpleDoubleProperty(c.getValue().getPrice()).asObject()
+        );
 
-        // Status column
         TableColumn<Product, String> colStatus = new TableColumn<>("Status");
+        colStatus.setMaxWidth(1f * Integer.MAX_VALUE);
         colStatus.setCellValueFactory(c ->
                 new javafx.beans.property.SimpleStringProperty(c.getValue().getStatus())
         );
 
-        // Color status
         colStatus.setCellFactory(column -> new TableCell<>() {
             @Override
             protected void updateItem(String s, boolean empty) {
@@ -105,15 +192,16 @@ public class InventoryView {
                 }
                 setText(s);
                 switch (s) {
-                    case "OUT OF STOCK" -> setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
-                    case "LOW STOCK" -> setStyle("-fx-text-fill: orange; -fx-font-weight: bold;");
-                    case "IN STOCK" -> setStyle("-fx-text-fill: #03DE82; -fx-font-weight: bold;");
+                    case "OUT OF STOCK" -> setStyle("-fx-text-fill: #E11D48; -fx-font-weight: bold;");
+                    case "LOW STOCK" -> setStyle("-fx-text-fill: #F59E0B; -fx-font-weight: bold;");
+                    case "IN STOCK" -> setStyle("-fx-text-fill: #10B981; -fx-font-weight: bold;");
                     default -> setStyle("");
                 }
             }
         });
 
-        table.getColumns().setAll(colId, colName, colCat, colQty, colPrice, colStatus);
+        // ✅ New order: ID, Image, Name, Category, Qty, Price, Status
+        table.getColumns().setAll(colId, colImg, colName, colCat, colQty, colPrice, colStatus);
 
         table.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
             if (sel != null) {
@@ -121,16 +209,24 @@ public class InventoryView {
                 tfCategory.setText(sel.getCategory());
                 tfQty.setText(String.valueOf(sel.getQuantity()));
                 tfPrice.setText(String.valueOf(sel.getPrice()));
+                selectedImagePath = ProductImageDAO.getImagePath(sel.getId());
             }
         });
 
-        // Form
+        // Form inputs (slightly modern)
         tfName.setPromptText("Name");
         tfCategory.setPromptText("Category");
         tfQty.setPromptText("Quantity");
         tfPrice.setPromptText("Price");
 
-        Button btnAdd = new Button("Add");
+        styleInput(tfName);
+        styleInput(tfCategory);
+        styleInput(tfQty);
+        styleInput(tfPrice);
+        styleInput(tfSearch);
+
+        // Buttons
+        Button btnAdd = new Button("Add Product");
         btnAdd.setOnAction(e -> add());
 
         Button btnEdit = new Button("Edit Selected");
@@ -139,35 +235,106 @@ public class InventoryView {
         Button btnRemove = new Button("Remove Selected");
         btnRemove.setOnAction(e -> removeSelected());
 
+        Button btnChooseImage = new Button("Choose Image");
+        btnChooseImage.setOnAction(e -> chooseImage());
+
+        stylePrimary(btnAdd);
+        stylePrimary(btnEdit);
+        styleDanger(btnRemove);
+        styleSecondary(btnChooseImage);
+        styleSecondary(btnBack);
+        styleSecondary(btnRefresh);
+        styleSecondary(btnLowStockFirst);
+
+        // Form layout card
         GridPane form = new GridPane();
         form.setHgap(10);
         form.setVgap(10);
-        form.setPadding(new Insets(10));
-        form.addRow(0, new Label("Name:"), tfName);
-        form.addRow(1, new Label("Category:"), tfCategory);
-        form.addRow(2, new Label("Qty:"), tfQty);
-        form.addRow(3, new Label("Price:"), tfPrice);
+        form.addRow(0, new Label("Name"), tfName);
+        form.addRow(1, new Label("Category"), tfCategory);
+        form.addRow(2, new Label("Qty"), tfQty);
+        form.addRow(3, new Label("Price"), tfPrice);
 
-        HBox actions = new HBox(10, btnAdd, btnEdit, btnRemove);
-        actions.setPadding(new Insets(10));
+        // Make fields expand
+        ColumnConstraints c1 = new ColumnConstraints();
+        c1.setMinWidth(80);
+        ColumnConstraints c2 = new ColumnConstraints();
+        c2.setHgrow(Priority.ALWAYS);
+        form.getColumnConstraints().setAll(c1, c2);
+
+        HBox actions = new HBox(10, btnAdd, btnEdit, btnRemove, btnChooseImage);
         actions.setAlignment(Pos.CENTER_LEFT);
 
-        VBox bottom = new VBox(5, form, actions, status);
-        bottom.setPadding(new Insets(10));
+        status.setStyle("-fx-text-fill: #374151; -fx-padding: 6 0 0 0;");
 
-        root.setTop(top);
-        root.setCenter(table);
-        root.setBottom(bottom);
+        VBox bottomCard = new VBox(10, form, actions, status);
+        bottomCard.setPadding(new Insets(14));
+        bottomCard.setStyle("""
+                -fx-background-color: white;
+                -fx-background-radius: 14;
+                -fx-border-radius: 14;
+                -fx-border-color: #E6EAF2;
+                -fx-border-width: 1;
+                """);
+
+        VBox bottomWrap = new VBox(bottomCard);
+        bottomWrap.setPadding(new Insets(10, 14, 14, 14));
+
+        // Center wrap to give padding and card look
+        VBox centerWrap = new VBox(table);
+        centerWrap.setPadding(new Insets(0, 14, 0, 14));
+
+        root.setTop(topWrap);
+        root.setCenter(centerWrap);
+        root.setBottom(bottomWrap);
     }
 
-    // ✅ Setup filtered + sorted lists and bind to search box
+    private void styleInput(TextField tf) {
+        tf.setStyle("""
+                -fx-background-color: #FFFFFF;
+                -fx-background-radius: 10;
+                -fx-border-radius: 10;
+                -fx-border-color: #E6EAF2;
+                -fx-border-width: 1;
+                -fx-padding: 8 10 8 10;
+                """);
+    }
+
+    private void stylePrimary(Button b) {
+        b.setStyle("""
+                -fx-background-color: #2563EB;
+                -fx-text-fill: white;
+                -fx-font-weight: bold;
+                -fx-background-radius: 10;
+                -fx-padding: 8 12 8 12;
+                """);
+    }
+
+    private void styleSecondary(Button b) {
+        b.setStyle("""
+                -fx-background-color: #EEF2FF;
+                -fx-text-fill: #1F2937;
+                -fx-font-weight: bold;
+                -fx-background-radius: 10;
+                -fx-padding: 8 12 8 12;
+                """);
+    }
+
+    private void styleDanger(Button b) {
+        b.setStyle("""
+                -fx-background-color: #FEE2E2;
+                -fx-text-fill: #991B1B;
+                -fx-font-weight: bold;
+                -fx-background-radius: 10;
+                -fx-padding: 8 12 8 12;
+                """);
+    }
+
     private void setupFilterAndSort() {
         filtered = new FilteredList<>(masterData, p -> true);
         sorted = new SortedList<>(filtered);
 
-        // Make sorted list obey TableView header sorting unless we override for low-stock-first
         sorted.comparatorProperty().bind(table.comparatorProperty());
-
         table.setItems(sorted);
 
         tfSearch.textProperty().addListener((obs, old, text) -> applyFilter(text));
@@ -191,23 +358,18 @@ public class InventoryView {
         return s == null ? "" : s.toLowerCase();
     }
 
-    // ✅ Low stock first sorting
     private void applySort() {
         if (!lowStockFirstEnabled) {
-            // Return to normal: let table header sorting take over
             sorted.comparatorProperty().bind(table.comparatorProperty());
-            table.sort(); // refresh
+            table.sort();
             return;
         }
 
-        // When enabled, override comparator:
-        // OUT OF STOCK (0) first, LOW STOCK (1..5) second, IN STOCK (6+) last
         Comparator<Product> cmp = Comparator
                 .comparingInt(this::statusRank)
                 .thenComparingInt(Product::getQuantity)
                 .thenComparing(p -> p.getName() == null ? "" : p.getName().toLowerCase());
 
-        // Break the binding then set our comparator
         sorted.comparatorProperty().unbind();
         sorted.setComparator(cmp);
         table.sort();
@@ -215,9 +377,9 @@ public class InventoryView {
 
     private int statusRank(Product p) {
         int q = p.getQuantity();
-        if (q == 0) return 0;       // Out first
-        if (q <= 5) return 1;       // Low second
-        return 2;                   // In stock last
+        if (q == 0) return 0;
+        if (q <= 10) return 1;
+        return 2;
     }
 
     private void refresh() {
@@ -226,23 +388,22 @@ public class InventoryView {
         int low = 0, out = 0;
         for (Product p : masterData) {
             if (p.getQuantity() == 0) out++;
-            else if (p.getQuantity() <= 5) low++;
+            else if (p.getQuantity() <= 10) low++;
         }
 
         status.setText("Loaded " + masterData.size() + " products.");
+
         if (out > 0 || low > 0) {
             stockWarning.setText("⚠ Low: " + low + " | Out: " + out);
-            stockWarning.setStyle("-fx-text-fill: orange; -fx-font-weight: bold;");
+            stockWarning.setStyle("-fx-text-fill: #F59E0B; -fx-font-weight: bold; -fx-padding: 0 0 0 8;");
         } else {
             stockWarning.setText("All stock healthy ✅");
-            stockWarning.setStyle("-fx-text-fill: #03DE82; -fx-font-weight: bold;");
+            stockWarning.setStyle("-fx-text-fill: #10B981; -fx-font-weight: bold; -fx-padding: 0 0 0 8;");
         }
 
-        // Re-apply filter + sort after refresh
         applyFilter(tfSearch.getText());
         applySort();
 
-        // optional popup once
         if (!warnedOnce && (out > 0 || low > 0)) {
             warnedOnce = true;
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -272,6 +433,7 @@ public class InventoryView {
             }
 
             status.setText(ok ? "Product added." : "Add failed.");
+            selectedImagePath = null;
             refresh();
         } catch (Exception ex) {
             status.setText("Invalid input (qty/price must be numbers).");
@@ -297,6 +459,11 @@ public class InventoryView {
             if (ok) {
                 String newStatus = new Product(sel.getId(), name, cat, qty, price).getStatus();
                 HistoryDAO.log("UPDATE", name, "Qty: " + oldQty + " → " + qty + " | Status: " + newStatus);
+
+                // save image if chosen
+                if (selectedImagePath != null && !selectedImagePath.isBlank()) {
+                    ProductImageDAO.upsertImagePath(sel.getId(), selectedImagePath);
+                }
             }
 
             status.setText(ok ? "Product updated." : "Update failed.");
@@ -319,7 +486,42 @@ public class InventoryView {
         }
 
         status.setText(ok ? "Product removed." : "Remove failed.");
+        selectedImagePath = null;
         refresh();
+    }
+
+    private void chooseImage() {
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Select Product Image");
+        fc.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif")
+        );
+
+        File file = fc.showOpenDialog(root.getScene().getWindow());
+        if (file == null) return;
+
+        try {
+            Path imagesDir = Paths.get("product_images");
+            if (!Files.exists(imagesDir)) Files.createDirectories(imagesDir);
+
+            String ext = getFileExtension(file.getName());
+            String newName = UUID.randomUUID().toString() + (ext.isEmpty() ? "" : "." + ext);
+
+            Path target = imagesDir.resolve(newName);
+            Files.copy(file.toPath(), target, StandardCopyOption.REPLACE_EXISTING);
+
+            selectedImagePath = target.toAbsolutePath().toString();
+            status.setText("Image selected. Click 'Edit Selected' to save.");
+        } catch (Exception ex) {
+            status.setText("Failed to select image.");
+            ex.printStackTrace();
+        }
+    }
+
+    private String getFileExtension(String name) {
+        int dot = name.lastIndexOf('.');
+        if (dot < 0) return "";
+        return name.substring(dot + 1);
     }
 
     public Parent getView() {

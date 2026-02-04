@@ -20,10 +20,10 @@ public class MainApp extends Application {
         this.primaryStage = stage;
         primaryStage.setTitle("Prestige Inventory Suites");
 
-        // ✅ Create ONE scene only
+        //  Create ONE scene only
         mainScene = new Scene(new StackPane(), WIDTH, HEIGHT);
 
-        // ✅ Load CSS once globally
+        //  Load CSS once globally
         mainScene.getStylesheets().add(
                 getClass().getResource("/styles.css").toExternalForm()
         );
