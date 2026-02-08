@@ -27,7 +27,7 @@ public class DashboardView {
         Label lblUser = new Label("Logged in as: " + username);
         lblUser.setStyle("-fx-font-size: 14px;");
 
-        // ✅ STOCK SUMMARY
+        //  STOCK SUMMARY
         StockSummary s = ProductDAO.getStockSummary();
 
         Label lblSummary = new Label(
@@ -51,6 +51,10 @@ public class DashboardView {
         header.setPadding(new Insets(15));
         header.setAlignment(Pos.CENTER_LEFT);
 
+        Button btnTransaction = new Button("Transaction");
+        btnTransaction.setPrefWidth(200);
+        btnTransaction.setOnAction(e -> mainApp.showTransactionView());
+
         Button btnInventory = new Button("Inventory");
         btnInventory.setPrefWidth(200);
         btnInventory.setOnAction(e -> mainApp.showInventoryView());
@@ -63,7 +67,7 @@ public class DashboardView {
         btnLogout.setPrefWidth(200);
         btnLogout.setOnAction(e -> mainApp.showLoginView());
 
-        VBox menu = new VBox(15, btnInventory, btnHistory, btnLogout);
+        VBox menu = new VBox(15, btnInventory,btnTransaction, btnHistory, btnLogout);
         menu.setPadding(new Insets(20));
         menu.setAlignment(Pos.CENTER);
 

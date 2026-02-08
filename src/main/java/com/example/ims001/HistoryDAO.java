@@ -1,3 +1,5 @@
+// Historydao ay ang kausap ni database hihi
+
 package com.example.ims001;
 
 import java.sql.*;

@@ -1,3 +1,5 @@
+//tagahawak siya ng data or dataholder inamerls, wala siyang database logic.
+
 package com.example.ims001;
 
 public class HistoryRecord {

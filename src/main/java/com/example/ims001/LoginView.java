@@ -220,7 +220,7 @@ public class LoginView {
             lblMessage.setText("Login successful!");
             lblMessage.getStyleClass().setAll("message-success");
 
-            Session.setUsername(username); // ✅ ADD THIS
+            Session.setUsername(username);
             mainApp.showDashboardView(username);
 
         } else {

@@ -83,7 +83,27 @@ public class ProductDAO {
         }
     }
 
-    //  Dashboard summary counts (Total / In / Low / Out)
+    // ✅ NEW: Used by TransactionView (delta can be + or -)
+    // Prevents quantity from going negative
+    public static boolean adjustStock(int productId, int delta) {
+        String sql = "UPDATE products SET quantity = quantity + ? WHERE id = ? AND (quantity + ?) >= 0";
+
+        try (Connection con = DB.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, delta);
+            ps.setInt(2, productId);
+            ps.setInt(3, delta);
+
+            return ps.executeUpdate() == 1;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // Dashboard summary counts (Total / In / Low / Out)
     public static StockSummary getStockSummary() {
         String sql = """
                 SELECT

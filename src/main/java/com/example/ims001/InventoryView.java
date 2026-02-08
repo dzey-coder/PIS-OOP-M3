@@ -121,10 +121,12 @@ public class InventoryView {
             private final ImageView iv = new ImageView();
 
             {
-                iv.setFitWidth(64);
-                iv.setFitHeight(64);
-                iv.setPreserveRatio(true);
+                iv.setFitWidth(128);
+                iv.setFitHeight(128);
+                iv.setPreserveRatio(false);
                 iv.setSmooth(true);
+
+                setAlignment(Pos.CENTER);
             }
 
             @Override
